@@ -72,10 +72,12 @@ contract TwoUp {
 
         // truncate unmached guesses
         if (g.heads.length > g.tails.length) {
-            g.heads.length = g.tails.length;
-        } else {
-            g.tails.length = g.heads.length;
+            removePlayersFrom(g.heads, g.tails.length);
+        } else if (g.tails.length > g.heads.length) {
+            removePlayersFrom(g.tails, g.heads.length);
         }
+        assert(g.tails.length == g.heads.length);
+
         g.state = GameState.CLOSED;
         return g.spinner;
     }
@@ -129,6 +131,16 @@ contract TwoUp {
         }
     }
 
+    // Remove (and refund) players starting from given index
+    function removePlayersFrom(address[] storage _players, uint _startIndex) internal {
+        assert(_startIndex < _players.length);
+        for (uint i = _startIndex; i < _players.length; i++) {
+            _players[i].transfer(AVG_PRICE);
+        }
+        _players.length = _startIndex;
+    }
+
+    // Reward winning players
     function payoutWinners(address[] storage _winners) internal {
         for (uint i=0; i < _winners.length; i++) {
             _winners[i].transfer(AVG_PRICE*2);
