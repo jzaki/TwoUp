@@ -52,13 +52,13 @@ contract TwoUp {
         return _gameId;
     }
 
-    // require game.state open
+    // place a bet on heads-heads for an open game
     function guessHeads(uint _gameId) public payable gameOpen(_gameId) {
         require(msg.value >= AVG_PRICE);
         games[_gameId].heads.push(msg.sender);
     }
 
-    // require game.state open
+    // place a bet on tails-tails for an open game
     function guessTails(uint _gameId) public payable gameOpen(_gameId) {
         require(msg.value >= AVG_PRICE);
         games[_gameId].tails.push(msg.sender);
@@ -69,7 +69,8 @@ contract TwoUp {
         Game storage g = games[_gameId];
         address[] storage heads = g.heads;
         g.spinner = heads[uint(keccak256(blockhash(block.number-1))) % heads.length];
-        //truncate unmached guesses
+
+        // truncate unmached guesses
         if (g.heads.length > g.tails.length) {
             g.heads.length = g.tails.length;
         } else {
@@ -104,16 +105,20 @@ contract TwoUp {
         require(g.state == GameState.SPINNING);
         require(g.hashedSeed == keccak256(_seed));
         g.hashedSeed = "";
+
+        // generate and emit result event
         bytes32 blockHash = blockhash(g.blockNumberToUse);
         uint random = uint(keccak256(uint(_seed) + uint(blockHash)));
         CoinResult result = CoinResult(random % 4);
         emit TwoUpResult(_gameId, uint(result));
+
+        // Heads or tails, winner paid out, reset game.
         bool newGame = true;
         if (result == CoinResult.HEADSHEADS) {
             payoutWinners(g.heads);
         } else if (result == CoinResult.TAILSTAILS) {
             payoutWinners(g.tails);
-        } else {
+        } else { // Odds, prepare for reflip of the kip
             newGame = false;
             g.state = GameState.CLOSED; //requires reflip
         }
