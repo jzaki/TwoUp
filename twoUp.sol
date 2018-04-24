@@ -31,10 +31,10 @@ contract TwoUp {
         _;
     }
 
-    modifier isSpinner(uint _gameId, address _player) {
+    modifier onlySpinner(uint _gameId) {
         address spinner = games[_gameId].spinner;
         require(spinner != address(0), "Spinner not selected");
-        require(spinner == _player, "Player is not the selected spinner");
+        require(spinner == msg.sender, "Not the selected spinner");
         _;
     }
 
@@ -64,11 +64,9 @@ contract TwoUp {
         games[_gameId].tails.push(msg.sender);
     }
 
-    // spinner chosen from heads addresses at random, game.state changes to closed.
-    function pickSpinner(uint _gameId) public returns (address) {
+    // spinner chosen from heads addresses at random, players matched, guessing is closed.
+    function pickSpinner(uint _gameId) public onlyBoxer gameOpen(_gameId) returns (address) {
         Game storage g = games[_gameId];
-        require(g.state == GameState.OPEN || g.state == GameState.FULL,
-            "Game not in expected state for this function");
         address[] storage heads = g.heads;
         g.spinner = heads[uint(keccak256(blockhash(block.number-1))) % heads.length];
         //truncate unmached guesses
@@ -100,8 +98,8 @@ contract TwoUp {
 
     event TwoUpResult(uint gameId, uint result); //CoinResult
 
-    // spinner only, deletes player arrays (should be called within 256 blocks)
-    function reviewResults(uint _gameId, bytes32 _seed) public isSpinner(_gameId, msg.sender) {
+    // spinner only (should be called within 256 blocks)
+    function reviewResults(uint _gameId, bytes32 _seed) public onlySpinner(_gameId) {
         Game storage g = games[_gameId];
         require(g.state == GameState.SPINNING);
         require(g.hashedSeed == keccak256(_seed));
