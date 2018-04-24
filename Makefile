@@ -1,11 +1,14 @@
 SRC = $(wildcard *.sol)
 
-.PHONY: clean outdir
+.PHONY: test outdir clean
 
 all: outdir $(SRC:.sol=.bin)
 
 %.bin: %.sol
 	solc --overwrite --abi --bin --optimize = -o out/ $<
+
+test:
+	dapp --use solc:0.4.22 test
 
 outdir:
 	mkdir -p out
