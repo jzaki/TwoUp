@@ -8,7 +8,7 @@ all: outdir $(SRC:.sol=.bin)
 	solc --overwrite --abi --bin --optimize = -o out/ $<
 
 test:
-	dapp --use solc:0.4.22 test
+	dapp --use solc:0.4.23 test
 
 outdir:
 	mkdir -p out
