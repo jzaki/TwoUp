@@ -21,9 +21,10 @@ contract TwoUp {
 
     // the app acts as the 'boxer', but does not take a cut.
     address boxer;
+    address owner; //can set the boxer
 
-    constructor(address _boxer) public {
-        boxer = _boxer;
+    constructor() public {
+        owner = msg.sender;
     }
 
     modifier gameOpen(uint _gameId) {
@@ -41,6 +42,15 @@ contract TwoUp {
     modifier onlyBoxer() {
         require(msg.sender == boxer);
         _;
+    }
+
+    modifier onlyOwner() {
+        require(msg.sender == owner);
+        _;
+    }
+
+    function setBoxer(address _boxer) public onlyOwner {
+        boxer = _boxer;
     }
 
     // returns a game id unique to the sender+block. Used for all other functions.
