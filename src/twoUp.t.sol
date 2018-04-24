@@ -53,7 +53,6 @@ contract TwoUpTest is DSTest {
     User internal user0;
     User internal user1;
 
-
     function setUp() public {
         twoUp = new TwoUp();
         boxer = new User(twoUp);
@@ -71,8 +70,34 @@ contract TwoUpTest is DSTest {
         // share game id with other user
         user1.guessTails(gId);
 
+        uint user0PostBetBalance = address(user0).balance;
+        uint user1PostBetBalance = address(user1).balance;
+
         assertTrue(address(twoUp).balance == twoUp.AVG_PRICE() * 2);
 
+        boxer.pickSpinner(gId);
+
+        TwoUp.Game memory g;
+        (g.hashedSeed, g.blockNumberToUse, g.spinner, g.state) = twoUp.games(gId);
+        assertTrue(g.spinner == address(user0));
+
+        bytes32 seed = "blah";
+        bytes32 hashedSeed = keccak256(seed);
+        user0.flipKip(gId, hashedSeed);
+        (g.hashedSeed, g.blockNumberToUse, g.spinner, g.state) = twoUp.games(gId);
+        assertTrue(g.state == TwoUp.GameState.SPINNING);
+
+        user0.reviewResults(gId, seed);
+        (g.hashedSeed, g.blockNumberToUse, g.spinner, g.state) = twoUp.games(gId);
+        if (g.state == TwoUp.GameState.OPEN) { //one winner paid out, one loser unchanged
+            bool user0win = ((user1PostBetBalance == address(user1).balance)
+            && (user0PostBetBalance + twoUp.AVG_PRICE() * 2 == address(user0).balance));
+            bool user1win = ((user0PostBetBalance == address(user0).balance)
+            && (user1PostBetBalance + twoUp.AVG_PRICE() * 2 == address(user1).balance));
+            assertTrue(user0win || user1win);
+        } else { // needs reflip
+            assertTrue(g.state == TwoUp.GameState.CLOSED);
+        }
     }
 
 }
