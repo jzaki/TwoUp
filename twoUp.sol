@@ -17,7 +17,14 @@ contract TwoUp {
         GameState state;
     }
 
-    enum GameState {OPEN, FULL, CLOSED, SPINNING}
+    enum GameState {NEW, OPEN, CLOSED, SPINNING}
+
+    // the app acts as the 'boxer', but does not take a cut.
+    address boxer;
+
+    constructor(address _boxer) public {
+        boxer = _boxer;
+    }
 
     modifier gameOpen(uint _gameId) {
         require(games[_gameId].state == GameState.OPEN, "Game round not open");
@@ -31,8 +38,18 @@ contract TwoUp {
         _;
     }
 
-    function createGame() public view returns (uint _gameId) {
-        return uint(keccak256(msg.sender, blockhash(block.number-1)));
+    modifier onlyBoxer() {
+        require(msg.sender == boxer);
+        _;
+    }
+
+    // returns a game id unique to the sender+block. Used for all other functions.
+    function createGame() public returns (uint _gameId) {
+        _gameId = uint(keccak256(msg.sender, blockhash(block.number-1)));
+        Game storage g = games[_gameId];
+        require(g.state == GameState.NEW);
+        g.state = GameState.OPEN;        
+        return _gameId;
     }
 
     // require game.state open
@@ -64,8 +81,16 @@ contract TwoUp {
         return g.spinner;
     }
 
-    // spinner only, closes game
-    function flipKip(uint _gameId, bytes32 _hashedSeed) public isSpinner(_gameId, msg.sender) {
+    // backup function in case spinner not active
+    function newSpinner(uint _gameId) public onlyBoxer returns (address) {
+        Game storage g = games[_gameId];
+        require(g.state == GameState.CLOSED, "Game is not yet closed");
+        g.state = GameState.OPEN;
+        return pickSpinner(_gameId);
+    }
+
+    // Only the spinner can flip the kip (maybe relax restriction for usability)
+    function flipKip(uint _gameId, bytes32 _hashedSeed) public onlySpinner(_gameId) {
         Game storage g = games[_gameId];
         require(g.state == GameState.CLOSED, "Game is not yet closed");
         g.hashedSeed = _hashedSeed;
